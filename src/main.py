@@ -6,9 +6,12 @@ import warnings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
 from langchain_ollama import OllamaEmbeddings
+from langchain_community.chat_models import ChatOllama
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+
+from data_embedding import vectorstore
 
 warnings.filterwarnings('ignore', category=UserWarning)
 
@@ -27,6 +30,39 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+# Prompt template used for RAG interactions
+prompt = ChatPromptTemplate.from_template(
+    "Use os documentos a seguir para responder a pergunta.\n{documents}\nPergunta: {question}"
+)
+
+# Initialize the LLM with Llama 3.2 model
+llm = ChatOllama(
+    model="llama3.2:1b",
+    temperature=0,
+)
+
+# Create a chain combining the prompt template and LLM
+rag_chain = prompt | llm | StrOutputParser()
+
+# Retriever from the embedded documents
+retriever = vectorstore.as_retriever()
+
+
+class RAGApplication:
+    def __init__(self, retriever, rag_chain):
+        self.retriever = retriever
+        self.rag_chain = rag_chain
+
+    def run(self, question: str) -> str:
+        """Run the RAG pipeline for a given question."""
+        documents = self.retriever.invoke(question)
+        doc_texts = "\n".join(doc.page_content for doc in documents)
+        answer = self.rag_chain.invoke({"question": question, "documents": doc_texts})
+        return answer
+
+
+rag_application = RAGApplication(retriever, rag_chain)
 
 
 def extract_model_names(models_info):
@@ -116,3 +152,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    # Example usage of the RAG application in the console
+    question = "What is prompt engineering"
+    answer = rag_application.run(question)
+    print("Question:", question)
+    print("Answer:", answer)
