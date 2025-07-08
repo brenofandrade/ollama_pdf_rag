@@ -1,8 +1,9 @@
+
 import logging
 import warnings
 import tempfile
 from pathlib import Path
-
+import re
 import streamlit as st
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
@@ -12,13 +13,18 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
 
-CHUNK_SIZE = 100
-CHUNK_OVERLAP = 50
+CHUNK_SIZE = 1000
+CHUNK_OVERLAP = 100
 MODEL_EMBEDDING = "mxbai-embed-large"
-
+MODEL_CHAT = "deepseek-r1"
 
 def resetar_chat() -> None:
     st.session_state.messages = []
+
+
+def extrair_resposta(texto):
+    texto_sem_pensamento = re.sub(r"<think>.*?</think>", "", texto, flags=re.DOTALL)
+    return texto_sem_pensamento.strip()
 
 
 def carregar_documentos(arquivos):
@@ -41,9 +47,15 @@ def construir_rag(docs):
     embeddings = OllamaEmbeddings(model=MODEL_EMBEDDING)
     vectorstore = Chroma.from_documents(docs, embeddings)
     prompt = ChatPromptTemplate.from_template(
-        "Use os documentos a seguir para responder a pergunta.\n{documents}\nPergunta: {question}"
+        """Use os documentos a seguir para responder a pergunta.
+        
+        documentos: {documents}
+        
+        Pergunta: {question}
+        
+        """
     )
-    llm = ChatOllama(model="llama3.2:1b", temperature=0)
+    llm = ChatOllama(model=MODEL_CHAT, temperature=0)
     rag_chain = prompt | llm | StrOutputParser()
     retriever = vectorstore.as_retriever()
     return retriever, rag_chain
@@ -98,6 +110,12 @@ def main():
             st.session_state.retriever = retriever
             st.session_state.rag_chain = rag_chain
             st.success("PDF(s) processado(s) com sucesso!")
+        
+        
+        if st.button("Excluir base de conhecimento"):
+            if "retriever" in st.session_state:
+                del st.session_state["retriever"]
+            
         st.button("Limpar Conversa", on_click=resetar_chat)
 
     with col2:
@@ -120,8 +138,9 @@ def main():
                     )
                 except Exception as e:
                     resposta = f"Erro ao processar pergunta: {e}"
-                st.write(resposta)
-                st.session_state.messages.append({"role": "ai", "content": resposta})
+                    resposta_final = extrair_resposta(resposta)
+                st.markdown(resposta_final)
+                st.session_state.messages.append({"role": "ai", "content": resposta_final})
 
     st.markdown("---")
     st.caption("Desenvolvido com ❤️ por Núcleo de Ciência de Dados • Unimed Blumenau")
