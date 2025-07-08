@@ -13,17 +13,17 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
 
-CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 100
+CHUNK_SIZE = 1500
+CHUNK_OVERLAP = 0
 MODEL_EMBEDDING = "mxbai-embed-large"
-MODEL_CHAT = "deepseek-r1"
+MODEL_CHAT = "llama3.2:latest"
 
 def resetar_chat() -> None:
     st.session_state.messages = []
 
 
-def extrair_resposta(texto):
-    return re.sub(r"<think>.*?</think>", "", texto, flags=re.DOTALL).strip()
+# def extrair_resposta(texto):
+#     return re.sub(r"<think>.*?</think>", "", texto, flags=re.DOTALL).strip()
 
 
 def carregar_documentos(arquivos):
@@ -129,10 +129,8 @@ def main():
                     )
                 except Exception as e:
                     resposta = f"Erro ao processar pergunta: {e}"
-                    resposta_final = extrair_resposta(resposta)
+                    
                 st.markdown(resposta)
-
-                st.write("Resposta:",resposta_final)
                 st.session_state.messages.append({"role": "ai", "content": resposta})
 
     st.markdown("---")
