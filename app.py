@@ -100,6 +100,10 @@ def main():
             type="pdf",
             accept_multiple_files=True,
         )
+        if arquivos:
+            st.markdown("**PDFs carregados:**")
+            for arquivo in arquivos:
+                st.write(f"- {arquivo.name}")
         if st.button("Processar PDFs") and arquivos:
             docs = carregar_documentos(arquivos)
             retriever, rag_chain = construir_rag(docs)
