@@ -23,8 +23,7 @@ def resetar_chat() -> None:
 
 
 def extrair_resposta(texto):
-    texto_sem_pensamento = re.sub(r"<think>.*?</think>", "", texto, flags=re.DOTALL)
-    return texto_sem_pensamento.strip()
+    return re.sub(r"<think>.*?</think>", "", texto, flags=re.DOTALL).strip()
 
 
 def carregar_documentos(arquivos):
@@ -47,12 +46,10 @@ def construir_rag(docs):
     embeddings = OllamaEmbeddings(model=MODEL_EMBEDDING)
     vectorstore = Chroma.from_documents(docs, embeddings)
     prompt = ChatPromptTemplate.from_template(
-        """Use os documentos a seguir para responder a pergunta.
-        
+        """
+        Use os documentos a seguir para responder a pergunta.
         documentos: {documents}
-        
         Pergunta: {question}
-        
         """
     )
     llm = ChatOllama(model=MODEL_CHAT, temperature=0)
@@ -95,9 +92,8 @@ def main():
         st.session_state.retriever = None
         st.session_state.rag_chain = None
 
-    col1, col2 = st.columns([1, 2])
 
-    with col1:
+    with st.sidebar:
         st.header("📂 Documentos", divider="gray")
         arquivos = st.file_uploader(
             "Envie um ou mais PDFs:",
@@ -110,15 +106,10 @@ def main():
             st.session_state.retriever = retriever
             st.session_state.rag_chain = rag_chain
             st.success("PDF(s) processado(s) com sucesso!")
-        
-        
-        if st.button("Excluir base de conhecimento"):
-            if "retriever" in st.session_state:
-                del st.session_state["retriever"]
             
         st.button("Limpar Conversa", on_click=resetar_chat)
 
-    with col2:
+    with st.container():
         st.header("💬 Chat com o Assistente", divider="gray")
 
         for msg in st.session_state.messages:
@@ -139,8 +130,10 @@ def main():
                 except Exception as e:
                     resposta = f"Erro ao processar pergunta: {e}"
                     resposta_final = extrair_resposta(resposta)
-                st.markdown(resposta_final)
-                st.session_state.messages.append({"role": "ai", "content": resposta_final})
+                st.markdown(resposta)
+
+                st.write("Resposta:",resposta_final)
+                st.session_state.messages.append({"role": "ai", "content": resposta})
 
     st.markdown("---")
     st.caption("Desenvolvido com ❤️ por Núcleo de Ciência de Dados • Unimed Blumenau")
