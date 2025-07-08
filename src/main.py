@@ -1,8 +1,9 @@
-import streamlit as st
 import logging
-import ollama
 import warnings
+import tempfile
+from pathlib import Path
 
+import streamlit as st
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
 from langchain_ollama import OllamaEmbeddings, ChatOllama
@@ -10,99 +11,65 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-from langchain_community.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_ollama import OllamaEmbeddings
-from langchain_community.vectorstores import Chroma
 
-
-PATH_DOCUMENTS = 'data/avaliacao_RAG.pdf'
-DB_DIR = 'db/chromadb/'
-
-
-chunk_size = 100
-chunk_overlap = 50
-
-loader = PyPDFLoader(PATH_DOCUMENTS)
-documents = loader.load()
-
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=chunk_size,
-    chunk_overlap=chunk_overlap,
-    # separator=r"\n|\s+",
-    # is_separator_regex=True
-)
-
-docs = text_splitter.split_documents(documents=documents)
-
+CHUNK_SIZE = 100
+CHUNK_OVERLAP = 50
 MODEL_EMBEDDING = "mxbai-embed-large"
 
-embeddings = OllamaEmbeddings(model=MODEL_EMBEDDING)
 
-vectorstore = Chroma.from_documents(
-    documents=docs,
-    embedding=embeddings,
-    persist_directory=DB_DIR,
-    collection_name='documents'
-)
-
-warnings.filterwarnings('ignore', category=UserWarning)
-
-# Configuração da página
-st.set_page_config(
-    page_title="📄 RAG com PDFs + Ollama",
-    page_icon="🤖",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-
-logger = logging.getLogger(__name__)
-
-# Prompt template used for RAG interactions
-prompt = ChatPromptTemplate.from_template(
-    "Use os documentos a seguir para responder a pergunta.\n{documents}\nPergunta: {question}"
-)
-
-# Initialize the LLM with Llama 3.2 model
-llm = ChatOllama(
-    model="llama3.2:1b",
-    temperature=0,
-)
-
-# Create a chain combining the prompt template and LLM
-rag_chain = prompt | llm | StrOutputParser()
-
-# Retriever from the embedded documents
-retriever = vectorstore.as_retriever()
-
-def resetar_chat():
-    st.session_state = []
+def resetar_chat() -> None:
     st.session_state.messages = []
 
 
-class RAGApplication:
-    def __init__(self, retriever, rag_chain):
-        self.retriever = retriever
-        self.rag_chain = rag_chain
+def carregar_documentos(arquivos):
+    """Carrega e divide PDFs enviados pelo usuário."""
+    documentos = []
+    for arquivo in arquivos:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(arquivo.read())
+            loader = PyPDFLoader(tmp.name)
+            documentos.extend(loader.load())
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
+    )
+    return splitter.split_documents(documentos)
 
-    def run(self, question: str) -> str:
-        """Run the RAG pipeline for a given question."""
-        documents = self.retriever.invoke(question)
-        doc_texts = "\n".join(doc.page_content for doc in documents)
-        answer = self.rag_chain.invoke({"question": question, "documents": doc_texts})
-        return answer
+
+def construir_rag(docs):
+    """Cria vetor de embeddings e cadeia RAG a partir dos documentos."""
+    embeddings = OllamaEmbeddings(model=MODEL_EMBEDDING)
+    vectorstore = Chroma.from_documents(docs, embeddings)
+    prompt = ChatPromptTemplate.from_template(
+        "Use os documentos a seguir para responder a pergunta.\n{documents}\nPergunta: {question}"
+    )
+    llm = ChatOllama(model="llama3.2:1b", temperature=0)
+    rag_chain = prompt | llm | StrOutputParser()
+    retriever = vectorstore.as_retriever()
+    return retriever, rag_chain
 
 
-rag_application = RAGApplication(retriever, rag_chain)
+def executar_pergunta(pergunta: str, retriever, rag_chain) -> str:
+    docs = retriever.invoke(pergunta)
+    textos = "\n".join(doc.page_content for doc in docs)
+    return rag_chain.invoke({"question": pergunta, "documents": textos})
+
 
 def main():
-    # Título e descrição
+    warnings.filterwarnings("ignore", category=UserWarning)
+    st.set_page_config(
+        page_title="📄 RAG com PDFs + Ollama",
+        page_icon="🤖",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
     st.title("📄💬 Assistente RAG para PDFs com Ollama + LangChain")
     st.caption(
         "Carregue documentos PDF, processe-os e faça perguntas sobre seu conteúdo com modelos locais via Ollama. "
@@ -110,56 +77,55 @@ def main():
     )
     st.markdown("---")
 
-    # Layout principal
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    if "retriever" not in st.session_state:
+        st.session_state.retriever = None
+        st.session_state.rag_chain = None
+
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        st.header("⚙️ Configuração", divider="gray")
-
-    with col1:
         st.header("📂 Documentos", divider="gray")
-        uploaded_files = st.file_uploader(
+        arquivos = st.file_uploader(
             "Envie um ou mais PDFs:",
             type="pdf",
             accept_multiple_files=True,
-            key="pdf_upload"
         )
-        if uploaded_files:
-            st.info(f"{len(uploaded_files)} arquivo(s) carregado(s) com sucesso.")
-        st.button(on_click=resetar_chat, label="Limpar")
+        if st.button("Processar PDFs") and arquivos:
+            docs = carregar_documentos(arquivos)
+            retriever, rag_chain = construir_rag(docs)
+            st.session_state.retriever = retriever
+            st.session_state.rag_chain = rag_chain
+            st.success("PDF(s) processado(s) com sucesso!")
+        st.button("Limpar Conversa", on_click=resetar_chat)
+
     with col2:
         st.header("💬 Chat com o Assistente", divider="gray")
 
-        # Histórico de mensagens na sessão
-        if "messages" not in st.session_state:
-            st.session_state.messages = []
-
-        # Exibir histórico
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"])
 
-        # Caixa de input para nova pergunta
-        user_input = st.chat_input("Digite sua pergunta aqui...")
-
-        if user_input:
-            # Mostra pergunta do usuário
-            st.session_state.messages.append({"role": "user", "content": user_input})
+        pergunta = st.chat_input("Digite sua pergunta aqui...")
+        if pergunta and st.session_state.retriever:
+            st.session_state.messages.append({"role": "user", "content": pergunta})
             with st.chat_message("user"):
-                st.write(user_input)
-
-            # Chama o pipeline RAG para resposta
+                st.write(pergunta)
             with st.chat_message("ai"):
                 st.write("Estou processando sua pergunta...")
                 try:
-                    resposta = rag_application.run(user_input)
+                    resposta = executar_pergunta(
+                        pergunta, st.session_state.retriever, st.session_state.rag_chain
+                    )
                 except Exception as e:
                     resposta = f"Erro ao processar pergunta: {e}"
                 st.write(resposta)
                 st.session_state.messages.append({"role": "ai", "content": resposta})
 
     st.markdown("---")
-    st.caption("""Desenvolvido com ❤️ por Núcleo de Ciência de Dados • Unimed Blumenau""")
+    st.caption("Desenvolvido com ❤️ por Núcleo de Ciência de Dados • Unimed Blumenau")
+
 
 if __name__ == "__main__":
     main()
