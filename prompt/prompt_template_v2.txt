@@ -1,0 +1,3 @@
+Traga uma lista com exatamente o texto referido nos critérios apresentados no documento.
+documentos: {documents}
+Pergunta: {question}

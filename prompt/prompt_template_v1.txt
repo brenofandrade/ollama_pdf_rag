@@ -1,0 +1,3 @@
+Use os documentos a seguir para responder a pergunta.
+documentos: {documents}
+Pergunta: {question}

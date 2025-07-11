@@ -15,14 +15,11 @@ from langchain_core.output_parsers import StrOutputParser
 CHUNK_SIZE = 1500
 CHUNK_OVERLAP = 0
 MODEL_EMBEDDING = "mxbai-embed-large"
-MODEL_CHAT = "llama3.2:latest"
+MODEL_CHAT = "magistral"
+
 
 def resetar_chat() -> None:
     st.session_state.messages = []
-
-
-# def extrair_resposta(texto):
-#     return re.sub(r"<think>.*?</think>", "", texto, flags=re.DOTALL).strip()
 
 
 def carregar_documentos(arquivos):
@@ -46,13 +43,13 @@ def construir_rag(docs):
     vectorstore = Chroma.from_documents(docs, embeddings)
     prompt = ChatPromptTemplate.from_template(
         """
-        Você é um assistente especializado em responder perguntas com base em documentos internos da empresa.  
+        Você é um assistente especializado em responder perguntas com base em documentos internos da empresa.
 
-        Sempre que possível, organize a resposta em tópicos claros, objetivos e relevantes.  
-        Se a informação não estiver presente nos documentos, apenas responda: **"Não há informações disponíveis nos documentos fornecidos para responder a esta pergunta."**  
+        Sempre que possível, organize a resposta em tópicos claros, objetivos e relevantes.
+        Se a informação não estiver presente nos documentos, apenas responda: **"Não há informações disponíveis nos documentos fornecidos para responder a esta pergunta."**
 
-        Use apenas as informações presentes nos documentos abaixo e não invente ou assuma nada além do que está explicitamente dito.  
-        Se os documentos contiverem mais de uma informação relevante, organize em uma lista numerada.  
+        Use apenas as informações presentes nos documentos abaixo e não invente ou assuma nada além do que está explicitamente dito.
+        Se os documentos contiverem mais de uma informação relevante, organize em uma lista numerada.
 
         ### Documentos:
         {documents}
@@ -103,7 +100,6 @@ def main():
         st.session_state.retriever = None
         st.session_state.rag_chain = None
 
-
     with st.sidebar:
         st.header("📂 Documentos", divider="gray")
         arquivos = st.file_uploader(
@@ -121,16 +117,19 @@ def main():
             st.session_state.retriever = retriever
             st.session_state.rag_chain = rag_chain
             st.success("PDF(s) processado(s) com sucesso!")
-            
+
         st.button("Limpar Conversa", on_click=resetar_chat)
 
+    # CHAT
     with st.container():
         st.header("💬 Chat com o Assistente", divider="gray")
 
+        # Mostrar histórico
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"])
 
+        # Input do usuário
         pergunta = st.chat_input("Digite sua pergunta aqui...")
         if pergunta and st.session_state.retriever:
             st.session_state.messages.append({"role": "user", "content": pergunta})
@@ -144,7 +143,7 @@ def main():
                     )
                 except Exception as e:
                     resposta = f"Erro ao processar pergunta: {e}"
-                    
+
                 st.markdown(resposta)
                 st.session_state.messages.append({"role": "ai", "content": resposta})
 
