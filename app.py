@@ -10,7 +10,7 @@ from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-
+from feedback import salvar_feedback
 
 CHUNK_SIZE = 1500
 CHUNK_OVERLAP = 0
@@ -90,10 +90,10 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    st.title("📄💬 Assistente RAG para PDFs com Ollama + LangChain")
+    st.title("📄 Assitente de conversação para documentos")
     st.caption(
-        "Carregue documentos PDF, processe-os e faça perguntas sobre seu conteúdo com modelos locais via Ollama. "
-        "Powered by LangChain 🦜🔗"
+        "Faça upload dos seus PDFs e receba informações rápidas sobre o conteúdo, de forma segura"
+        
     )
     st.markdown("---")
 
@@ -111,19 +111,27 @@ def main():
             type="pdf",
             accept_multiple_files=True,
         )
-        if arquivos:
-            st.markdown("**PDFs carregados:**")
-            for arquivo in arquivos:
-                st.write(f"- {arquivo.name}")
-        if st.button("Processar PDFs") and arquivos:
+
+        ## Exibe uma lista com todos os arquivos já carregados
+        # if arquivos:
+        #     st.markdown("**PDFs carregados:**")
+        #     for arquivo in arquivos:
+        #         st.write(f"- {arquivo.name}")
+
+        # Processa os arquivos e armazena no vector store
+        if st.button("Processar PDFs", use_container_width=True) and arquivos:
             docs = carregar_documentos(arquivos)
             retriever, rag_chain = construir_rag(docs)
             st.session_state.retriever = retriever
             st.session_state.rag_chain = rag_chain
             st.success("PDF(s) processado(s) com sucesso!")
-            
-        st.button("Limpar Conversa", on_click=resetar_chat)
+        
+        # Limpa a conversa para uma nova pergunta
+        st.button("Limpar Conversa", on_click=resetar_chat, use_container_width=True)
 
+        avaliacao_checkbox = st.checkbox("Feedback", value=False)
+
+    
     with st.container():
         st.header("💬 Chat com o Assistente", divider="gray")
 
@@ -147,6 +155,33 @@ def main():
                     
                 st.markdown(resposta)
                 st.session_state.messages.append({"role": "ai", "content": resposta})
+    
+    with st.container():
+        st.empty()
+    
+    col_1, col_2 = st.columns([2, 2])
+    
+    
+    with col_1:
+        st.empty()
+    with col_2:
+        if avaliacao_checkbox:
+            with st.container():
+                st.header("✍️ Feedback", divider="gray")
+                avaliacao = str(st.feedback("thumbs"))
+                usuario = st.text_input("Seu nome", "")
+                mensagem = st.text_area("Sua mensagem", "")
+
+                if st.button("Enviar"):
+                    if all([avaliacao, usuario, mensagem]):
+                        salvar_feedback(usuario=usuario, mensagem=mensagem, avaliacao=avaliacao)
+                        st.success("✅ Feedback salvo com sucesso!")
+                    else:
+                        st.warning("⚠️ Preencha todos os campos antes de enviar.")
+        else:
+            st.empty()
+
+
 
     st.markdown("---")
     st.caption("Desenvolvido com ❤️ por Núcleo de Ciência de Dados • Unimed Blumenau")
