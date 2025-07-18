@@ -12,8 +12,8 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from feedback import salvar_feedback
 
-CHUNK_SIZE = 1500
-CHUNK_OVERLAP = 0
+CHUNK_SIZE = 2000
+CHUNK_OVERLAP = 500
 MODEL_EMBEDDING = "mxbai-embed-large"
 MODEL_CHAT = "llama3.2:latest"
 
@@ -168,6 +168,7 @@ def main():
         if avaliacao_checkbox:
             with st.container():
                 st.header("✍️ Feedback", divider="gray")
+                st.write("Escolha uma opção (Positivo/Negativo):")
                 avaliacao = str(st.feedback("thumbs"))
                 usuario = st.text_input("Seu nome", "")
                 mensagem = st.text_area("Sua mensagem", "")
