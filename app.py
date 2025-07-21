@@ -56,14 +56,14 @@ def construir_rag(docs):
     prompt_path = f"prompt/prompt_template_v4.txt"
     # prompt_path = f"prompt/prompt_template_v5.txt"
 
-    with open(prompt_path, "r") as file:
+    with open(prompt_path, "r", encoding='utf-8') as file:
         prompt_file = file.read()
 
     print(f"TEMPLATE: \n\n{prompt_file}")
 
     prompt = ChatPromptTemplate.from_template(prompt_file)
 
-    llm = ChatOllama(model=MODEL_CHAT, temperature=0.2)
+    llm = ChatOllama(model=MODEL_CHAT, temperature=0)
     rag_chain = prompt | llm | StrOutputParser()
     retriever = vectorstore.as_retriever()
     return retriever, rag_chain

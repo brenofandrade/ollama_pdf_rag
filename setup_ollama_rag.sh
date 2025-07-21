@@ -14,8 +14,8 @@ sleep 2  # Pequena pausa para garantir que o servidor suba
 echo "==== Baixando modelos ===="
 # Modelos de Chat: 
 # - llama3.2
+# - llama3.2:3b
 # - cogito:3b
-# - 
 
 # Modelos de Embedding:
 # - mxbai-embed-large
@@ -23,7 +23,12 @@ echo "==== Baixando modelos ===="
 
 
 ollama pull llama3.2:latest
+ollama pull llama3.2:3b
+
 ollama pull mxbai-embed-large
+ollama pull nomic-embed-text
+
+sleep 2
 
 # echo "==== Clonando repositório ===="
 # git clone https://github.com/brenofandrade/ollama_pdf_rag.git
