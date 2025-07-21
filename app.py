@@ -53,8 +53,8 @@ def construir_rag(docs):
     # prompt_path = f"prompt/prompt_template_v1.txt"
     # prompt_path = f"prompt/prompt_template_v2.txt"
     # prompt_path = f"prompt/prompt_template_v3.txt"
-    prompt_path = f"prompt/prompt_template_v4.txt"
-    # prompt_path = f"prompt/prompt_template_v5.txt"
+    # prompt_path = f"prompt/prompt_template_v4.txt"
+    prompt_path = f"prompt/prompt_template_v5.txt"
 
     with open(prompt_path, "r", encoding='utf-8') as file:
         prompt_file = file.read()
