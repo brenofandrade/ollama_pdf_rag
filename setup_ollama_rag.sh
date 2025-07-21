@@ -12,6 +12,16 @@ ollama serve &
 sleep 2  # Pequena pausa para garantir que o servidor suba
 
 echo "==== Baixando modelos ===="
+# Modelos de Chat: 
+# - llama3.2
+# - cogito:3b
+# - 
+
+# Modelos de Embedding:
+# - mxbai-embed-large
+# - nomic-embed-text
+
+
 ollama pull llama3.2:latest
 ollama pull mxbai-embed-large
 
