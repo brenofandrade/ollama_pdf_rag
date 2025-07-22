@@ -26,3 +26,10 @@ def salvar_feedback(usuario: str, mensagem: str, arquivo: Path = ARQUIVO_PADRAO,
 
     with arquivo.open("a", encoding="utf-8") as file:
         file.write(json.dumps(feedback, ensure_ascii=False) + "\n")
+
+
+def salvar_pergunta(pergunta):
+
+    if pergunta:
+        with open("history.log", "a", encoding="utf-8") as file:
+            file.write(f"{pergunta}\n")

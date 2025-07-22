@@ -1,7 +1,7 @@
 import os
 import re
-import shutil
-import tempfile
+
+import time
 from pathlib import Path
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
@@ -10,14 +10,12 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 import streamlit as st
-from feedback import salvar_feedback
+from feedback import salvar_feedback, salvar_pergunta
+from rag_utils import *
 import logging
 import warnings
 
-CHUNK_SIZE = 2000
-CHUNK_OVERLAP = 300
-MODEL_EMBEDDING = "mxbai-embed-large:latest"
-MODEL_CHAT = "llama3.2:latest"
+
 
 def resetar_chat() -> None:
     st.session_state.messages = []
@@ -26,67 +24,6 @@ def resetar_chat() -> None:
 # def extrair_resposta(texto):
 #     return re.sub(r"<think>.*?</think>", "", texto, flags=re.DOTALL).strip()
 
-
-def carregar_documentos(arquivos):
-    """Carrega e divide PDFs enviados pelo usuário."""
-    documentos = []
-    for arquivo in arquivos:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(arquivo.read())
-            loader = PyPDFLoader(tmp.name)
-            documentos.extend(loader.load())
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-    )
-    return splitter.split_documents(documentos)
-
-
-def construir_rag(docs):
-    """Cria vetor de embeddings e cadeia RAG a partir dos documentos."""
-    embeddings = OllamaEmbeddings(model=MODEL_EMBEDDING)
-    vectorstore = Chroma.from_documents(docs, embeddings, persist_directory='db')
-
-    ### Possiveis escolhas de prompt já testados ###
-    # -------------------------------------------- #
-
-    # prompt_path = f"prompt/prompt_template_v1.txt"
-    # prompt_path = f"prompt/prompt_template_v2.txt"
-    # prompt_path = f"prompt/prompt_template_v3.txt"
-    # prompt_path = f"prompt/prompt_template_v4.txt"
-    prompt_path = f"prompt/prompt_template_v5.txt"
-
-    with open(prompt_path, "r", encoding='utf-8') as file:
-        prompt_file = file.read()
-
-    print(f"TEMPLATE: \n\n{prompt_file}")
-
-    prompt = ChatPromptTemplate.from_template(prompt_file)
-
-    llm = ChatOllama(model=MODEL_CHAT, temperature=0)
-    rag_chain = prompt | llm | StrOutputParser()
-    retriever = vectorstore.as_retriever()
-    return retriever, rag_chain
-
-
-def executar_pergunta(pergunta: str, retriever, rag_chain) -> str:
-    docs = retriever.invoke(pergunta)
-    textos = "\n".join(doc.page_content for doc in docs)
-    return rag_chain.invoke({"question": pergunta, "documents": textos})
-
-
-def deletar_base_conhecimento(path:str = "db"):
-    """
-    Deleta a base de conhecimento
-    """
-
-    try:
-        shutil.rmtree(path)
-        logging.info(f"Base de conhecimento removida de :{path}")
-    except FileNotFoundError:
-        logging.warning(f"Base de conhecimento não encontrada em: {path}")
-    except Exception as error:
-        logging.error(f"Erro ao tentar remover base de conhecimento: {error}")
 
 def main():
     warnings.filterwarnings("ignore", category=UserWarning)
@@ -148,7 +85,7 @@ def main():
             st.session_state.rag_chain = None
             st.success("Base de conhecimento deletada com sucesso!")
 
-        avaliacao_checkbox = st.checkbox("Feedback", value=False)
+        avaliacao_checkbox = st.checkbox("Feedback", value=False, key="feedback")
 
     
     with st.container():
@@ -159,6 +96,9 @@ def main():
                 st.write(msg["content"])
 
         pergunta = st.chat_input("Digite sua pergunta aqui...")
+
+        salvar_pergunta(pergunta)
+
         if pergunta and st.session_state.retriever:
             st.session_state.messages.append({"role": "user", "content": pergunta})
             with st.chat_message("user"):
@@ -180,11 +120,14 @@ def main():
     
     col_1, col_2 = st.columns([2, 2])
     
+
+    if "feedback_enviado" not in st.session_state:
+        st.session_state.feedback_enviado = False
     
     with col_1:
         st.empty()
     with col_2:
-        if avaliacao_checkbox:
+        if st.session_state.feedback and not st.session_state.feedback_enviado:
             with st.container():
                 st.header("✍️ Feedback", divider="gray")
                 st.write("Escolha uma opção (Positivo/Negativo):")
@@ -192,12 +135,23 @@ def main():
                 usuario = st.text_input("Seu nome", "")
                 mensagem = st.text_area("Sua mensagem", "")
 
+                usuario = "anonimous" if not usuario else usuario
+
                 if st.button("Enviar"):
                     if all([avaliacao, usuario, mensagem]):
                         salvar_feedback(usuario=usuario, mensagem=mensagem, avaliacao=avaliacao)
                         st.success("✅ Feedback salvo com sucesso!")
+                        st.session_state.feedback_enviado = True
+                        
                     else:
                         st.warning("⚠️ Preencha todos os campos antes de enviar.")
+
+        elif st.session_state.feedback_enviado:
+            st.success("✅ Obrigado pelo feedback!")
+            # na próxima renderização, reseta para esconder formulário
+            # st.session_state.feedback = False
+            st.session_state.feedback_enviado = False
+        
         else:
             st.empty()
 
