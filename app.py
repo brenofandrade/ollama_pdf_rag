@@ -85,8 +85,18 @@ def main():
             st.session_state.rag_chain = None
             st.success("Base de conhecimento deletada com sucesso!")
 
-        avaliacao_checkbox = st.checkbox("Feedback", value=False, key="feedback")
+        
+        if "mostrar_sobre" not in st.session_state:
+            st.session_state.mostrar_sobre = False
 
+        if st.checkbox("ℹ️ Sobre"):
+            st.session_state.mostrar_sobre = True
+        else:
+            st.session_state.mostrar_sobre = False
+
+            # st.session_state.mostrar_sobre = not st.session_state.mostrar_sobre
+
+        avaliacao_checkbox = st.checkbox("🗳️ Feedback", value=False, key="feedback")
     
     with st.container():
         st.header("💬 Chat com o Assistente", divider="gray")
@@ -125,7 +135,26 @@ def main():
         st.session_state.feedback_enviado = False
     
     with col_1:
-        st.empty()
+        if st.session_state.mostrar_sobre:
+            st.header("ℹ️ Sobre", divider="gray")
+            st.markdown("""
+                Esta aplicação utiliza uma **IA de conversação de código aberto (LLM)** integrada a um sistema de **recuperação aumentada (RAG)** para fornecer respostas mais precisas e contextuais.
+
+                Ela foi construída com tecnologias modernas, como:
+
+                - **Runpod**
+                - **Ollama**
+                - **LangChain**
+                - **Streamlit**
+
+                A execução ocorre em um ambiente isolado e seguro, especialmente projetado para garantir a **total privacidade dos dados**.
+
+                Nenhuma informação inserida pelo usuário é compartilhada com terceiros ou enviada para serviços externos: **todo o processamento acontece localmente no servidor**, de forma segura e sem vazamentos de dados.
+
+                O sistema combina a eficiência dos modelos *open-source* com a robustez de uma infraestrutura dedicada, oferecendo uma experiência **confiável, privada e totalmente protegida** para os usuários.
+                """)
+        else:
+            st.empty()
     with col_2:
         if st.session_state.feedback and not st.session_state.feedback_enviado:
             with st.container():
