@@ -1,9 +1,10 @@
-streamlit
-langchain
-langchain-core
-langchain-ollama
-langchain-community
-langchain-text-splitters
-chromadb
-ollama
-pypdf
+chromadb==1.0.15
+langchain==0.3.26
+langchain-community==0.3.27
+langchain-core==0.3.68
+langchain-ollama==0.3.3
+langchain-text-splitters==0.3.8
+ollama==0.5.1
+# pinecone==7.3.0
+pypdf==5.7.0
+streamlit==1.46.1

@@ -31,7 +31,11 @@ def carregar_documentos(arquivos):
 def construir_rag(docs):
     """Cria vetor de embeddings e cadeia RAG a partir dos documentos."""
     embeddings = OllamaEmbeddings(model=MODEL_EMBEDDING)
-    vectorstore = Chroma.from_documents(docs, embeddings, persist_directory='db')
+    vectorstore = Chroma.from_documents(
+        docs, 
+        embeddings, 
+        # persist_directory='db'  # Persistir diretório pode provocar erro em inserir novos documentos.
+        )
 
     ### Possiveis escolhas de prompt já testados ###
     # -------------------------------------------- #
