@@ -44,3 +44,14 @@ pip install -r requirements.txt
 ```bash
 streamlit run app.py --server.address 0.0.0.0 --server.port 7860 --server.enableCORS false --server.headless true --server.enableWebsocketCompression false
 ```
+
+### SETUP with docker container
+
+```bash
+docker build -t streamlit-app .
+```
+
+
+```bash
+docker run -d -p 7860:7860 streamlit-app
+```
