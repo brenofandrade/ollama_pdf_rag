@@ -7,7 +7,7 @@ echo "==== Instalando Ollama ===="
 curl -fsSL https://ollama.com/install.sh | sh
 
 echo "==== Iniciando servidor Ollama em background ===="
-ollama serve &
+nohup ollama serve &
 
 sleep 2  # Pequena pausa para garantir que o servidor suba
 
@@ -49,9 +49,9 @@ echo "==== Instalando dependências do projeto ===="
 pip install -r requirements.txt
 
 echo "==== Iniciando aplicação Streamlit ===="
-streamlit run app.py \
+nohup streamlit run app.py \
     --server.address 0.0.0.0 \
     --server.port 7860 \
     --server.enableCORS false \
     --server.headless true \
-    --server.enableWebsocketCompression false
+    --server.enableWebsocketCompression false &
